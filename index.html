@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>n8n automation post read</title>
+<style>
+:root{
+  --maroon:#6B1F2A; --maroon-deep:#4A1019; --maroon-soft:#8C3B47; --maroon-tint:#F0DCD9;
+  --beige:#F6EFE3; --beige-2:#EDE1CC; --beige-3:#DCC9A8; --paper:#FCF8F0;
+  --ink:#2B1A1D; --muted:#6E5A5C; --line:#D9C7A6;
+  --serif:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--beige);color:var(--ink);font:17px/1.7 var(--sans)}
+a{color:var(--maroon)}
+:focus-visible{outline:3px solid var(--maroon);outline-offset:2px;border-radius:4px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--maroon);color:#fff;padding:8px 14px;border-radius:6px;z-index:100}
+.skip:focus{left:8px}
+
+/* top bar */
+.bar{position:sticky;top:0;z-index:50;background:var(--maroon-deep);color:var(--beige)}
+.bar-in{max-width:1180px;margin:auto;display:flex;align-items:center;gap:16px;padding:10px 20px}
+.bar b{font-family:var(--serif);font-size:16px;white-space:nowrap}
+.bar nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
+.bar nav a{color:var(--beige-2);text-decoration:none;font-size:13px;padding:5px 10px;border-radius:99px;white-space:nowrap}
+.bar nav a:hover,.bar nav a.on{background:var(--beige);color:var(--maroon-deep)}
+.prog{height:3px;background:var(--maroon-soft)}
+.prog i{display:block;height:100%;width:0;background:var(--beige-3)}
+
+/* hero */
+.hero{background:var(--maroon);color:var(--beige);padding:84px 20px 76px;text-align:left}
+.hero-in{max-width:880px;margin:auto}
+.kicker{letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--beige-3);margin:0 0 14px}
+.hero h1{font:700 clamp(36px,6vw,62px)/1.08 var(--serif);margin:0 0 20px}
+.hero p{font-size:19px;max-width:660px;color:var(--beige-2);margin:0 0 28px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips span{border:1px solid var(--beige-3);border-radius:99px;padding:4px 14px;font-size:14px;color:var(--beige)}
+
+/* layout */
+.wrap{max-width:1180px;margin:auto;padding:0 20px;display:grid;grid-template-columns:210px minmax(0,1fr);gap:48px}
+aside{position:sticky;top:84px;align-self:start;padding-top:48px;font-size:14px}
+aside ol{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+aside a{display:block;padding:6px 14px;color:var(--muted);text-decoration:none;margin-left:-2px;border-left:2px solid transparent}
+aside a:hover{color:var(--maroon)}
+aside a.on{color:var(--maroon);border-left-color:var(--maroon);font-weight:600}
+main{max-width:800px;padding-bottom:40px}
+section{padding:56px 0 8px;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.num{font:600 14px var(--mono);color:var(--maroon-soft);letter-spacing:.08em}
+h2{font:700 clamp(28px,4vw,38px)/1.2 var(--serif);color:var(--maroon-deep);margin:6px 0 18px}
+h3{font:700 22px/1.3 var(--serif);color:var(--maroon);margin:36px 0 10px}
+p{margin:0 0 16px}
+.lead{font-size:20px;color:var(--muted)}
+ul{padding-left:22px}
+li{margin-bottom:6px}
+code{font-family:var(--mono);font-size:.88em;background:var(--beige-2);padding:1px 6px;border-radius:4px}
+
+/* components */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px;margin:22px 0}
+.callout{border-left:5px solid var(--maroon);background:var(--maroon-tint);padding:16px 20px;border-radius:0 12px 12px 0;margin:24px 0}
+.callout strong:first-child{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--maroon);margin-bottom:4px}
+.callout p:last-child{margin:0}
+.quote{font:italic 22px/1.45 var(--serif);color:var(--maroon-deep);border-left:4px solid var(--beige-3);padding:4px 0 4px 20px;margin:26px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.tile{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px}
+.tile h4{margin:0 0 6px;font:700 17px var(--serif);color:var(--maroon)}
+.tile p{margin:0;font-size:15px}
+.viz{background:var(--paper);border:2px solid var(--maroon);border-radius:16px;padding:0;margin:30px 0;overflow:hidden}
+.viz-h{background:var(--maroon);color:var(--beige);padding:10px 20px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.viz-b{padding:22px}
+.viz small,.note{color:var(--muted);font-size:14px}
+button,.btn{font:600 14px var(--sans);cursor:pointer;border-radius:99px;border:1.5px solid var(--maroon);background:transparent;color:var(--maroon);padding:7px 16px}
+button:hover{background:var(--maroon-tint)}
+button[aria-pressed=true],button.primary,button[aria-selected=true]{background:var(--maroon);color:var(--beige)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px}
+textarea{width:100%;font:16px/1.5 var(--mono);padding:12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);resize:vertical}
+input[type=range]{width:100%;accent-color:var(--maroon)}
+label{font-weight:600;font-size:14px}
+
+table{border-collapse:collapse;width:100%;margin:20px 0;font-size:15px;background:var(--paper)}
+th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+th{background:var(--maroon);color:var(--beige)}
+td:first-child{font-weight:600;color:var(--maroon-deep)}
+.tw{overflow-x:auto}
+
+pre{background:var(--maroon-deep);color:var(--beige);padding:18px;border-radius:12px;overflow-x:auto;font:14px/1.6 var(--mono);margin:0}
+.codewrap{position:relative;margin:20px 0}
+.codewrap .cap{font:600 12px var(--mono);color:var(--beige-3);background:#3a0c14;padding:6px 14px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
+.codewrap .cap+pre{border-radius:0 0 12px 12px}
+.copy{padding:2px 10px;font-size:12px;color:var(--beige);border-color:var(--beige-3)}
+.copy:hover{background:var(--maroon-soft)}
+.c{color:#CBB89B}.k{color:#F0B8A0}.s{color:#E6D3A3}
+
+details{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin:12px 0}
+summary{cursor:pointer;padding:14px 18px;font-weight:600;color:var(--maroon-deep);list-style:none;display:flex;gap:10px;align-items:center}
+summary::before{content:"+";font:700 20px var(--mono);color:var(--maroon);width:18px}
+details[open] summary::before{content:"–"}
+details>div{padding:0 18px 14px}
+details .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;background:var(--beige-3);color:var(--maroon-deep);border-radius:99px;padding:2px 10px}
+
+/* quiz */
+.quiz{background:var(--maroon-deep);color:var(--beige);border-radius:16px;padding:24px;margin:34px 0}
+.quiz .qh{font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--beige-3)}
+.quiz p.q{font:600 19px/1.5 var(--serif);margin:8px 0 16px}
+.quiz .opts{display:grid;gap:10px}
+.quiz .opt{display:block;text-align:left;width:100%;border:1.5px solid var(--beige-3);color:var(--beige);border-radius:12px;padding:12px 16px;font:15px/1.5 var(--sans);font-weight:400;background:transparent}
+.quiz .opt:hover:not(:disabled){background:var(--maroon)}
+.quiz .opt.right{background:var(--beige);color:var(--maroon-deep);border-color:var(--beige);font-weight:600}
+.quiz .opt.wrong{border-style:dashed;opacity:.8;text-decoration:line-through}
+.quiz .opt:disabled{cursor:default}
+.quiz .ex{margin-top:16px;background:var(--beige);color:var(--ink);border-radius:12px;padding:14px 18px;font-size:15px}
+.quiz .ex b{color:var(--maroon)}
+
+/* tokens */
+.tok{display:inline-block;border:1px solid var(--maroon-soft);border-radius:5px;padding:1px 3px;margin:2px 1px;font:15px/1.5 var(--mono);white-space:pre;background:var(--beige-2)}
+.tok:nth-child(even){background:var(--maroon-tint)}
+.tokbox{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px;min-height:90px;max-height:240px;overflow:auto}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.stat{background:var(--beige-2);border-radius:10px;padding:10px;text-align:center}
+.stat b{display:block;font:700 26px var(--serif);color:var(--maroon)}
+.stat span{font-size:12px;color:var(--muted)}
+.cmp{display:grid;gap:8px;margin-top:10px}
+.cmp div{display:grid;grid-template-columns:110px 1fr 70px;gap:10px;align-items:center;font-size:14px}
+.cmp i{display:block;height:16px;background:var(--maroon);border-radius:4px;transition:width .3s}
+
+/* sampling bars */
+.sbar{display:grid;grid-template-columns:86px 1fr 60px;gap:10px;align-items:center;margin:6px 0;font-size:14px}
+.sbar .t{font-family:var(--mono);text-align:right}
+.sbar .tr{height:24px;background:var(--beige-2);border-radius:5px;position:relative;overflow:hidden}
+.sbar .f{position:absolute;inset:0 auto 0 0;background:var(--maroon);transition:width .25s}
+.sbar .g{position:absolute;inset:0 auto 0 0;border-right:2px dashed var(--maroon-soft);background:repeating-linear-gradient(45deg,transparent 0 5px,rgba(107,31,42,.18) 5px 7px)}
+.sbar .cut{font-size:11px;color:var(--maroon-soft);text-transform:uppercase;letter-spacing:.06em}
+.ctrls{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:16px}
+.ctrls output{font:700 18px var(--mono);color:var(--maroon)}
+
+/* desk */
+.desk{border:2px solid var(--maroon);border-radius:12px;padding:10px;background:#fff;min-height:60px}
+.paper{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-radius:8px;margin:5px 0;font-size:14px;background:var(--beige-2);border:1px solid var(--beige-3)}
+.paper.out{border:2px dashed var(--maroon-soft);background:transparent;color:var(--muted);text-decoration:line-through}
+.paper.ans{background:var(--maroon-tint);border:1px solid var(--maroon-soft);font-style:italic}
+.meter{height:14px;background:var(--beige-2);border-radius:99px;overflow:hidden;margin:6px 0 12px}
+.meter i{display:block;height:100%;background:var(--maroon);transition:width .3s}
+
+/* msgs */
+.msg{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start;margin:6px 0;padding:8px 12px;border-radius:10px;background:var(--beige-2);font-size:14px}
+.msg.off{opacity:.45;border:1.5px dashed var(--maroon-soft);background:transparent}
+.role{font:700 12px var(--mono);text-transform:uppercase;color:var(--maroon-deep);border:1.5px solid var(--maroon);border-radius:99px;text-align:center;padding:1px 6px}
+
+/* terms nest */
+.nest{display:grid;gap:0}
+.nest button{display:block;width:100%;text-align:left;border-radius:14px;margin:0;padding:12px 16px}
+.nest .l1{background:var(--beige-2);border-color:var(--maroon)}
+.nest .l2{background:var(--beige-3);width:calc(100% - 28px);margin:8px 0 0 28px}
+.nest .l3{background:var(--maroon-tint);width:calc(100% - 56px);margin:8px 0 0 56px}
+.nest .l4{background:var(--maroon-soft);color:var(--beige);width:calc(100% - 84px);margin:8px 0 8px 84px}
+.nest button[aria-pressed=true]{outline:3px solid var(--maroon);background:var(--maroon);color:var(--beige)}
+.nestinfo{margin-top:14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 18px;min-height:96px}
+
+footer{background:var(--maroon-deep);color:var(--beige-2);text-align:center;padding:36px 20px;font-family:var(--serif);font-size:18px}
+footer small{display:block;font:13px var(--sans);color:var(--beige-3);margin-top:6px}
+
+@media(max-width:1000px){.wrap{grid-template-columns:1fr}aside{display:none}}
+@media(max-width:700px){
+  body{font-size:16px}.grid2,.grid3,.ctrls{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}
+  .bar b{display:none}.hero{padding:56px 20px}.sbar{grid-template-columns:70px 1fr 50px}
+  .cmp div{grid-template-columns:80px 1fr 56px}.msg{grid-template-columns:1fr}
+  .nest .l2{margin-left:12px;width:calc(100% - 12px)}.nest .l3{margin-left:24px;width:calc(100% - 24px)}.nest .l4{margin-left:36px;width:calc(100% - 36px)}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+<style>
+.diff{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.prompt{background:var(--maroon-deep);color:var(--beige);border-radius:12px;padding:14px 16px;font:13.5px/1.6 var(--mono);white-space:pre-wrap;margin:0;overflow-x:auto}
+.vd{border:2px solid var(--maroon);border-radius:12px;padding:14px 18px;background:var(--maroon-tint);margin-top:14px}
+.ok{color:#2e5d2e;font-weight:700}.bad{color:var(--maroon);font-weight:700}
+.chk{display:grid;gap:6px;margin:12px 0}
+.chk div{display:flex;gap:10px;align-items:baseline;padding:8px 12px;border-radius:10px;background:var(--beige-2);font-size:15px}
+.chk div.pass{border-left:5px solid #2e5d2e}.chk div.fail{border-left:5px dashed var(--maroon)}
+.lay{border:2px solid var(--maroon);border-radius:10px;padding:10px 14px;font:14px/1.5 var(--sans);background:var(--paper)}
+.lay b{display:block;font:700 11px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--maroon)}
+.wf{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:10px 2px}
+.wcol{display:grid;gap:8px}
+.nd{min-width:116px;border:2px solid var(--maroon);border-radius:12px;padding:8px 10px;background:var(--paper);font-size:13px;text-align:center;line-height:1.35}
+.nd small{display:block;font:700 10px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--maroon)}
+.nd .st{display:block;font:700 11px var(--sans);margin-top:3px}
+.nd.off{opacity:.25;border-style:dashed}
+.nd.skip{opacity:.55;border-style:dotted}
+.nd.sel{outline:3px solid var(--maroon-deep);outline-offset:2px}
+.nd.fail{background:var(--maroon);color:var(--beige)}.nd.fail small{color:var(--beige-3)}
+.nd.silent{background:var(--beige-3);border-width:5px;border-style:double}
+.nd.hot{background:var(--maroon-tint);border-width:3px}
+.nd.k-t{border-radius:30px 12px 12px 30px}
+.nd.k-l{border-radius:4px}
+.ar{color:var(--maroon);font-size:20px;flex:none}
+.brl{font:700 10px var(--sans);color:var(--maroon);text-align:center;letter-spacing:.08em}
+.pairs{display:grid;gap:8px}
+.pairs button{display:grid;grid-template-columns:1fr 24px 1fr;gap:8px;text-align:left;border-radius:12px;align-items:center}
+.pairs button code{background:transparent;font-size:12.5px}
+.pairs button[aria-pressed=true] code{color:var(--beige)}
+.items{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.itm{font:12px/1.4 var(--mono);background:var(--beige-2);border:1.5px solid var(--maroon-soft);border-radius:8px;padding:6px 9px}
+.kinds{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.kinds button{border-radius:10px;font-size:13px;padding:8px 4px}
+.game{font:700 24px var(--serif);color:var(--maroon-deep);text-align:center;margin:10px 0}
+.steps{list-style:none;padding:0;margin:0}
+.steps li{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:var(--beige-2);margin:6px 0}
+.steps li.done{opacity:.6;background:transparent;border:1.5px dashed var(--maroon-soft)}
+.steps input{margin-top:5px;width:18px;height:18px;accent-color:var(--maroon)}
+.steps label{font-weight:400;font-size:15px;cursor:pointer}
+.out{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font:13px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word}
+.out mark{background:var(--maroon-tint);border-bottom:2px solid var(--maroon);padding:0 2px}
+.out .em{background:var(--maroon);color:var(--beige);border-radius:4px;padding:0 4px;font-style:italic}
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panes h5{margin:0 0 4px;font:700 13px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--maroon)}
+.kd{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.kd .tile{padding:12px}
+.kd .tile h4{font-size:15px}
+.kd .tile p{font-size:13px}
+@media(max-width:700px){.diff,.panes,.kd{grid-template-columns:1fr}.kinds{grid-template-columns:repeat(2,1fr)}.pairs button{grid-template-columns:1fr}.wf{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar" role="banner">
+  <div class="bar-in">
+    <b>n8n automation post read</b>
+    <nav aria-label="Sections" id="topnav"></nav>
+  </div>
+  <div class="prog" aria-hidden="true"><i id="pbar"></i></div>
+</header>
+
+<div class="hero">
+  <div class="hero-in">
+    <p class="kicker">Class 6 · AI and Agents</p>
+    <h1>n8n automation post read</h1>
+    <p>The same pipeline you wrote in Python, without the code: triggers, nodes and connections, credentials, expressions, debugging, and a support-ticket triage workflow that runs on its own.</p>
+    <div class="chips"><span>Triggers &amp; nodes</span><span>Credentials</span><span>Triage workflow</span><span>Expressions</span><span>Debugging</span><span>Export &amp; import</span></div>
+  </div>
+</div>
+
+<div class="wrap">
+<aside aria-label="Table of contents"><ol id="toc"></ol></aside>
+<main id="main">
+
+<!-- 1 -->
+<section id="s1" data-title="Same pipeline">
+  <span class="num">01</span>
+  <h2>Where we are: you wrote this in Python already</h2>
+  <p class="lead">Something comes in, a model processes it, something goes out. You wrote that in Python, in four files. Now you build the same shape without writing code, and you add the parts your app never had: it runs on its own, and it sends the result somewhere.</p>
+  <div class="viz">
+    <div class="viz-h"><span>Map · Python to n8n</span><span>Select a pair</span></div>
+    <div class="viz-b">
+      <div class="pairs" id="pairs" role="group" aria-label="Pairs"></div>
+      <div class="vd" id="pairinfo" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="callout"><strong>Important</strong><p>n8n is not a different kind of AI. The node that calls the model is making the same API call you made in Class 1, with the same three roles and the same key. What n8n gives you is everything around that call: a trigger, branching, connections to other services, and a picture of what happened.</p></div>
+  <p>Think of something you do manually every week that could run on its own. The best of those ideas becomes your own build in Section 9.</p>
+</section>
+
+<!-- 2 -->
+<section id="s2" data-title="The canvas">
+  <span class="num">02</span>
+  <h2>The canvas: triggers, nodes, connections</h2>
+  <p>Three ideas, and then you can read any workflow you ever meet.</p>
+  <div class="tw"><table>
+    <tr><th>Idea</th><th>What it is</th></tr>
+    <tr><td>Trigger</td><td>What starts the workflow. A form, a schedule, an incoming message, or you pressing a button.</td></tr>
+    <tr><td>Node</td><td>One step. Call a model, send an email, add a row, make a decision.</td></tr>
+    <tr><td>Connection</td><td>The line between two nodes. Data flows left to right along it.</td></tr>
+  </table></div>
+  <p>That is the whole mental model. Everything else is which node you picked.</p>
+
+  <h3>How data moves</h3>
+  <p>Every node hands the next node a list of <b>items</b>, and each item is JSON. Class 2 taught you to ask a model for JSON; this is where that pays off, because the next node can reach into it by field name. A node does its job <b>once per item</b>: hand it five tickets and it runs five times.</p>
+  <div class="viz">
+    <div class="viz-h"><span>Simulator · Items on the canvas</span><span>Change how many tickets arrive</span></div>
+    <div class="viz-b">
+      <label for="nit">Tickets arriving at the trigger: <output id="nito">3</output></label>
+      <input type="range" id="nit" min="1" max="5" value="3">
+      <div class="wf" id="wf1" aria-live="polite"></div>
+      <p class="note" style="margin:0 0 6px">Items leaving the trigger (each is JSON):</p>
+      <div class="items" id="itms"></div>
+    </div>
+  </div>
+  <div class="callout"><strong>Important</strong><p>When something does not work, the question is almost always "what did this node actually receive". Not what you think it received. n8n shows you, and Section 7 is about reading it.</p></div>
+  <div class="quiz" data-quiz="q1"></div>
+</section>
+
+<!-- 3 -->
+<section id="s3" data-title="Getting n8n running">
+  <span class="num">03</span>
+  <h2>Getting n8n running, and importing a workflow</h2>
+  <h3>Before class</h3>
+  <p>Watch the <a href="https://drive.google.com/file/d/13a2yC6eChPFRgXWiZgx32Zge8ZaOEEwF/view?usp=sharing" target="_blank" rel="noopener">n8n install walkthrough video</a> and complete the install. It is the step-by-step for installing n8n on your own machine and getting it running. It takes about fifteen minutes and almost all of that is waiting for things to download.</p>
+  <h3>The checkpoint</h3>
+  <ul class="steps" data-steps id="cp"></ul>
+  <div class="callout"><strong>If your local install will not start</strong><p>Use n8n Cloud at <a href="https://n8n.io" target="_blank" rel="noopener">n8n.io</a> instead and keep going. Everything in this class works the same there, with one exception that Section 4 names. Do not spend time debugging an install; sort it out afterwards.</p></div>
+
+  <h3>Importing a workflow</h3>
+  <p>Two ways in, and both are worth knowing.</p>
+  <div class="grid2">
+    <div class="tile"><h4>From a file</h4><p>Open the workflow menu, the three dots at the top right of the canvas, and choose <b>Import from File</b>. Pick a <code>.json</code> and the whole workflow appears.</p></div>
+    <div class="tile"><h4>From the clipboard</h4><p>Copy workflow JSON as text, click anywhere on the canvas, and paste. n8n reads JSON on the clipboard and draws the nodes. If you fall behind during a build, this is the rescue: paste a shared JSON instead of rebuilding.</p></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="s4" data-title="Nodes & credentials">
+  <span class="num">04</span>
+  <h2>The node types you need, and how credentials work</h2>
+  <p>You will meet hundreds of nodes. They are all one of five things.</p>
+  <div class="kd">
+    <div class="tile"><h4>Trigger</h4><p>Starts the workflow.</p><p class="note">Form, Schedule, Webhook, Manual</p></div>
+    <div class="tile"><h4>AI</h4><p>Calls a model.</p><p class="note">OpenAI Chat Model and the other chat model nodes</p></div>
+    <div class="tile"><h4>Action</h4><p>Does something in another service.</p><p class="note">Gmail, Google Sheets, Telegram</p></div>
+    <div class="tile"><h4>Logic</h4><p>Decides or reshapes.</p><p class="note">IF, Switch, Edit Fields</p></div>
+    <div class="tile"><h4>HTTP Request</h4><p>Calls any API with no dedicated node.</p><p class="note">The escape hatch</p></div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-h"><span>Try it · Which kind of node?</span><span>Quick drill</span></div>
+    <div class="viz-b">
+      <div class="game" id="gname"></div>
+      <div class="kinds" id="gk" role="group" aria-label="Kinds"></div>
+      <div class="vd" id="gres" aria-live="polite"></div>
+      <div class="row" style="margin-top:12px"><button id="gnext" class="primary">Next node</button><small id="gscore"></small></div>
+    </div>
+  </div>
+  <div class="callout"><strong>Important</strong><p>HTTP Request is the one to remember. If a service has no n8n node but has an API, you can still use it. That single node is the difference between "n8n cannot do that" and "n8n can do anything with an API".</p></div>
+
+  <h3>Credentials: connect once, reuse everywhere</h3>
+  <p>Any node that touches an outside service needs credentials. You create them once and every workflow can use them. There are two kinds and they cost very different amounts of your time.</p>
+  <div class="viz">
+    <div class="viz-h"><span>Compare · API key vs OAuth</span><span>Select a credential</span></div>
+    <div class="viz-b">
+      <div class="row" id="credb" role="group" aria-label="Credential"><button data-c="key" aria-pressed="true">API key or token</button><button data-c="oc" aria-pressed="false">OAuth on n8n Cloud</button><button data-c="ol" aria-pressed="false">OAuth on a local install</button></div>
+      <ol id="credsteps" aria-live="polite"></ol>
+      <div class="vd" id="credt"></div>
+    </div>
+  </div>
+  <div class="callout"><strong>The one exception worth knowing</strong><p>Google nodes such as Gmail and Sheets use OAuth, and on a self-hosted n8n you have to register your own application with Google to get a client ID and secret first. On n8n Cloud that is handled for you. It is not hard, it is just a detour, so do it before class rather than during it.</p></div>
+  <p class="note">Why can a self-hosted install not borrow n8n's OAuth app? The redirect has to come back to your machine.</p>
+
+  <h3>The AI node, and the swappable brain again</h3>
+  <p>The chat model node needs a credential too. You can point an OpenAI-type credential at a different provider by changing the base URL, exactly as you did in <code>first_call.py</code>.</p>
+  <div class="tw"><table>
+    <tr><th>n8n field</th><th>What to put</th><th>Same as in your Python</th></tr>
+    <tr><td>API key</td><td>Your Groq key from Class 1</td><td><code>api_key=key</code></td></tr>
+    <tr><td>Base URL</td><td><code>https://api.groq.com/openai/v1</code></td><td><code>base_url="https://api.groq.com/openai/v1"</code></td></tr>
+    <tr><td>Model</td><td><code>openai/gpt-oss-120b</code></td><td><code>model="openai/gpt-oss-120b"</code></td></tr>
+  </table></div>
+  <p>Same key, same base URL, same model name as the code you wrote in Class 1. The brain is swappable here too, and for the same reason: the interface is the same.</p>
+
+  <h3>Telegram, the fastest credential in the class</h3>
+  <ul class="steps" data-steps id="tg"></ul>
+  <div class="quiz" data-quiz="q2"></div>
+</section>
+
+<!-- 5 -->
+<section id="s5" data-title="Live build">
+  <span class="num">05</span>
+  <h2>Live build: support ticket triage</h2>
+  <p>A ticket arrives, the model reads it and decides how urgent it is and what it is about, and then urgent and routine tickets go to different places.</p>
+  <div class="codewrap"><div class="cap"><span>The shape</span></div><pre>Form  ->  AI classifies  ->  IF urgent?  ->  yes: Telegram alert
+                                         ->  no:  Gmail draft reply</pre></div>
+
+  <div class="viz">
+    <div class="viz-h"><span>Stepper · Build it node by node</span><span>Build the first branch before the second</span></div>
+    <div class="viz-b">
+      <div class="row"><button id="bprev">‹ Back</button><button id="bnext" class="primary">Next ›</button><small id="bstep"></small></div>
+      <div class="wf" id="wf2"></div>
+      <div class="vd" id="binfo" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <h3>The system prompt</h3>
+  <p>It should look familiar, because it is Class 2's structured output lesson.</p>
+  <div class="codewrap"><div class="cap"><span>System prompt</span><button class="copy">Copy</button></div><pre>You triage incoming customer support tickets.
+
+Return only JSON with exactly these keys:
+{
+  "category": "delivery | billing | product_fault | other",
+  "urgency": "high | normal",
+  "sentiment": "angry | neutral | happy",
+  "summary": "one sentence, under 20 words",
+  "suggested_reply": "a polite reply, under 80 words, no promises about refunds"
+}
+
+Mark urgency high only if the customer mentions a deadline, a legal threat,
+or says they have already been ignored.
+
+Return only the JSON object. No explanation, no code fences.</pre></div>
+  <div class="callout"><strong>Important</strong><p>That last line is the one from Class 2, and it matters more here than it did in a chat window, because the next node is going to try to read these fields by name. A friendly sentence before the JSON breaks the whole workflow.</p></div>
+
+  <div class="viz">
+    <div class="viz-h"><span>Simulator · Route a ticket</span><span>A rule-based stand-in for the model</span></div>
+    <div class="viz-b">
+      <div class="row" id="tk" role="group" aria-label="Tickets">
+        <button data-t="a" aria-pressed="true">Angry, with a deadline</button><button data-t="b" aria-pressed="false">Calm delivery question</button><button data-t="c" aria-pressed="false">Empty message</button>
+      </div>
+      <label for="tmsg">Ticket message (editable)</label>
+      <textarea id="tmsg" rows="3"></textarea>
+      <div class="wf" id="wf3"></div>
+      <div class="panes"><div><h5>AI node output (JSON)</h5><div class="out" id="tjson"></div></div><div><h5>What the branch does</h5><div class="out" id="tact" aria-live="polite"></div></div></div>
+      <p class="note" style="margin:10px 0 0">A simple keyword rule stands in for the model here, following the prompt's own urgency rule: a deadline, a legal threat, or already being ignored. A real model reads the ticket properly and can disagree. Submit an angry ticket with a deadline, then a calm one, and the two go down different branches.</p>
+    </div>
+  </div>
+  <div class="callout"><strong>Important</strong><p>You have just built something a real support team would recognise: a triage step that reads unstructured text, makes a judgement, and routes accordingly. The only thing missing for production is error handling, which is Class 8.</p></div>
+  <p class="note">If Gmail OAuth is not working, put a second Telegram node on the false branch with a different message. The lesson is the branch, not the mail provider.</p>
+</section>
+
+<!-- 6 -->
+<section id="s6" data-title="Expressions">
+  <span class="num">06</span>
+  <h2>Expressions: the prompt template with variables</h2>
+  <p>So far every node used fixed text. Expressions are how a node uses the data flowing into it. This is the template prompting that Classes 2 and 3 deferred: it needs real variable injection to be worth teaching.</p>
+  <h3>The syntax</h3>
+  <p>An expression is wrapped in double curly braces and reads from <code>$json</code>, which is the item coming in.</p>
+  <div class="tw"><table>
+    <tr><th>Expression</th><th>What it gives you</th></tr>
+    <tr><td><code>{{ $json.urgency }}</code></td><td>The urgency field from the previous node</td></tr>
+    <tr><td><code>{{ $json.customer_email }}</code></td><td>The email the customer typed into the form</td></tr>
+    <tr><td><code>{{ $json.summary.toUpperCase() }}</code></td><td>The summary, shouted. It is JavaScript inside the braces</td></tr>
+    <tr><td><code>{{ $('Form Trigger').item.json.subject }}</code></td><td>A field from a specific earlier node, not just the previous one</td></tr>
+  </table></div>
+  <p>That last row is the one people need and do not know to look for. Once you are three nodes deep, the thing you want is often not from the node immediately behind you.</p>
+
+  <h3>The template, finally</h3>
+  <div class="codewrap"><div class="cap"><span>Prompt template</span><button class="copy">Copy</button></div><pre>A customer wrote in about an order. Write a reply.
+
+Their name: {{ $json.customer_name }}
+Their order number: {{ $json.order_id }}
+What they said: {{ $json.message }}
+How urgent we judged it: {{ $json.urgency }}
+
+Match the tone to the urgency. Do not promise a refund.</pre></div>
+  <p>The prompt is written once. The values change on every run. That is the difference between a prompt you paste and a prompt that is part of a system.</p>
+
+  <div class="viz">
+    <div class="viz-h"><span>Visualizer · Expression resolver</span><span>Mini evaluator for $json and named nodes</span></div>
+    <div class="viz-b">
+      <p style="margin-top:0"><b>The node directly before this one is:</b></p>
+      <div class="row" id="prev" role="group" aria-label="Previous node"><button data-p="form" aria-pressed="true">Form Trigger</button><button data-p="ai" aria-pressed="false">AI node</button></div>
+      <div class="panes">
+        <div><h5>$json (the current input)</h5><div class="out" id="jdata"></div></div>
+        <div><h5>Also available by name</h5><div class="out" id="ndata"></div></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button data-tpl="a" aria-pressed="true">Template using $json</button><button data-tpl="b" aria-pressed="false">Template using named nodes</button></div>
+      <label for="tin">Template (editable)</label>
+      <textarea id="tin" rows="7"></textarea>
+      <h5 style="margin:12px 0 4px;font:700 13px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--maroon)">Resolved preview</h5>
+      <div class="out" id="tout" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="callout"><strong>Important</strong><p>The resolved preview is the whole trick. You can see what an expression evaluates to before you run anything, so a typo in a field name is obvious immediately rather than three runs later. In n8n, drag a field from the input panel into a text box and it writes the expression for you; learn to drag first and the syntax second.</p></div>
+  <details><summary>Is this the same as the few-shot examples from Class 2? <span class="tag">Common doubt</span></summary><div>
+    <p>No, and they combine well. Few-shot is examples of the output you want, written into the prompt. This is injecting live data into a prompt. A production prompt usually has both: fixed rules, fixed examples, and variable slots for whatever just came in.</p></div></details>
+  <div class="quiz" data-quiz="q3"></div>
+</section>
+
+<!-- 7 -->
+<section id="s7" data-title="Reading a run">
+  <span class="num">07</span>
+  <h2>Reading a run, and breaking it on purpose</h2>
+  <p>When a workflow misbehaves, you do not guess. Every node keeps what went in and what came out.</p>
+  <h3>The loop</h3>
+  <ol>
+    <li>Run the workflow and look at the canvas. Nodes that ran are marked, and the one that failed is marked differently.</li>
+    <li>Click the failing node. You get two panels: input on the left, output on the right.</li>
+    <li>Read the input. The question is always the same: <b>is this what you expected this node to receive?</b></li>
+    <li>If yes, the node's own settings are wrong. If no, the problem is upstream: move one node to the left and repeat.</li>
+  </ol>
+  <div class="viz">
+    <div class="viz-h"><span>Try it · The debugging question</span><span>Answer it for the node you are inspecting</span></div>
+    <div class="viz-b">
+      <p style="margin-top:0"><b>Is the input what you expected this node to receive?</b></p>
+      <div class="row" role="group"><button id="dy" aria-pressed="false">Yes</button><button id="dn" aria-pressed="false">No</button></div>
+      <div class="vd" id="dres" aria-live="polite">Pick an answer.</div>
+    </div>
+  </div>
+  <div class="callout"><strong>Important</strong><p>That is the entire debugging method and it works on every workflow you will ever open, including somebody else's. Most workflow problems are a field name that does not exist, and the input panel shows you that in two seconds.</p></div>
+
+  <h3>Break it on purpose</h3>
+  <p>These are engineered failures, so they reproduce every time, whatever the model does.</p>
+  <div class="viz">
+    <div class="viz-h"><span>Visualizer · Three ways to break the triage workflow</span><span>Select a failure</span></div>
+    <div class="viz-b">
+      <div class="row" id="brk" role="group" aria-label="Failures">
+        <button data-b="1" aria-pressed="true">1. Wrong field name</button><button data-b="2" aria-pressed="false">2. Remove "Return only the JSON"</button><button data-b="3" aria-pressed="false">3. Empty message body</button>
+      </div>
+      <div class="wf" id="wf4"></div>
+      <div class="panes"><div><h5>Input panel of the marked node</h5><div class="out" id="bin"></div></div><div><h5>Output panel</h5><div class="out" id="bout"></div></div></div>
+      <div class="vd" id="bnote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>Which of those three would be hardest to notice in production? Most people say the first, and they are right: it did not crash, it just quietly sent nothing, which is worse.</p>
+  <div class="quiz" data-quiz="q4"></div>
+</section>
+
+<!-- 8 -->
+<section id="s8" data-title="Export & import">
+  <span class="num">08</span>
+  <h2>Export, import, and sharing your work</h2>
+  <p>A workflow is a JSON file. Knowing that is what lets you back it up, share it, move it between machines, and put it in version control.</p>
+  <div class="viz">
+    <div class="viz-h"><span>Visualizer · What is in the file</span><span>Simplified illustration</span></div>
+    <div class="viz-b">
+      <div class="row" role="group"><button id="ex1" aria-pressed="true">Exported file</button><button id="ex2" aria-pressed="false">Imported by a classmate</button></div>
+      <div class="diff">
+        <pre class="prompt" id="exj" style="max-height:340px"></pre>
+        <div><div class="chk" id="exc" aria-live="polite"></div></div>
+      </div>
+    </div>
+  </div>
+  <h3>Exporting</h3>
+  <ul class="steps" data-steps id="exs"></ul>
+  <div class="callout"><strong>Important</strong><p>Your credentials are not in that file. n8n exports a reference to a credential, not the key itself. That is what makes it safe to share a workflow, and it is also why importing someone else's workflow means reconnecting your own accounts before it runs.</p></div>
+  <h3>Importing</h3>
+  <p>From a file (the same three-dot menu, then <b>Import from File</b>) or from the clipboard (copy the JSON and paste it onto the canvas, the fastest way to share one in a chat). Then reconnect credentials: any node that needs an account will show that it needs one.</p>
+  <h3>Why this matters beyond backups</h3>
+  <p>In Class 4 you learned that the instructions are yours and the platform's box is temporary. The same applies here. A workflow you can export is a workflow you own. You can diff two versions, you can keep it in a repository, and you can move it to a different n8n without rebuilding it by hand. Export today's workflow and keep the file: you will want it next class.</p>
+</section>
+
+<!-- 9 -->
+<section id="s9" data-title="Your own build">
+  <span class="num">09</span>
+  <h2>Your own build</h2>
+  <p>Pick one challenge. Select each to see its shape.</p>
+  <div class="viz">
+    <div class="viz-h"><span>Explorer · Challenges</span><span>Select one</span></div>
+    <div class="viz-b">
+      <div class="row" id="chal" role="group" aria-label="Challenges"><button data-c="a" aria-pressed="true">A · Morning briefing</button><button data-c="b" aria-pressed="false">B · Spreadsheet sorter</button><button data-c="c" aria-pressed="false">C · Your own</button></div>
+      <div class="wf" id="wf5"></div>
+      <div class="vd" id="chaln" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>Export whatever you built and post the JSON for a classmate. Import somebody else's and see if you can tell what it does without being told.</p>
+  <div class="quiz" data-quiz="q5"></div>
+</section>
+
+<!-- 10 -->
+<section id="s10" data-title="Wrap-up">
+  <span class="num">10</span>
+  <h2>Wrap-up and what is next</h2>
+  <h3>What you can do now</h3>
+  <div class="grid2">
+    <div class="tile"><h4>Read any workflow</h4><p>As triggers, nodes and connections, and say what data is moving along each line.</p></div>
+    <div class="tile"><h4>Connect a model</h4><p>Using the same key and the same base URL as your Python code.</p></div>
+    <div class="tile"><h4>Inject live data</h4><p>Into a prompt with expressions: the template prompting deferred to this class.</p></div>
+    <div class="tile"><h4>Debug by reading</h4><p>What a node actually received, rather than guessing.</p></div>
+  </div>
+  <p style="margin-top:14px">And you can export a workflow as JSON, which means you own it.</p>
+  <h3>What is still missing</h3>
+  <p>Today's workflow has no error handling. If Telegram is down, the run fails and nobody finds out. If the model returns something unexpected, the branch does the wrong thing silently. Real automations need retries, fallbacks and a way to tell somebody when they break.</p>
+  <h3>Next class</h3>
+  <div class="viz">
+    <div class="viz-h"><span>Compare · Who chooses the path?</span><span>Toggle</span></div>
+    <div class="viz-b">
+      <div class="row" role="group"><button id="ag1" aria-pressed="true">This class: you wrote the IF node</button><button id="ag2" aria-pressed="false">Class 7: an agent</button></div>
+      <div class="vd" id="agn" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>Class 7 is agents. An agent is what you get when the model makes that choice instead, picking its own tools and its own sequence. Everything you built here still applies, and the question becomes what happens when nobody wrote the branch in advance.</p>
+  <h3>Resources</h3>
+  <div class="tw"><table>
+    <tr><th>Resource</th><th>Link</th></tr>
+    <tr><td>Install walkthrough video</td><td><a href="https://drive.google.com/file/d/13a2yC6eChPFRgXWiZgx32Zge8ZaOEEwF/view?usp=sharing" target="_blank" rel="noopener">Google Drive video</a></td></tr>
+    <tr><td>n8n, local, once installed</td><td><a href="http://localhost:5678" target="_blank" rel="noopener">localhost:5678</a></td></tr>
+    <tr><td>n8n Cloud, the fallback</td><td><a href="https://n8n.io" target="_blank" rel="noopener">n8n.io</a></td></tr>
+    <tr><td>Free API keys, from Class 1</td><td><a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a></td></tr>
+    <tr><td>n8n documentation</td><td><a href="https://docs.n8n.io" target="_blank" rel="noopener">docs.n8n.io</a></td></tr>
+  </table></div>
+</section>
+
+</main>
+</div>
+
+<footer>n8n automation post read<small>Class 6 · AI and Agents</small></footer>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* nav */
+const secs=$$('main section');
+$('#topnav').innerHTML=secs.map(s=>`<a href="#${s.id}">${s.dataset.title}</a>`).join('');
+$('#toc').innerHTML=secs.map((s,i)=>`<li><a href="#${s.id}">${String(i+1).padStart(2,'0')} · ${s.dataset.title}</a></li>`).join('');
+function onScroll(){
+  const h=document.documentElement;
+  $('#pbar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';
+  let cur=secs[0].id;secs.forEach(s=>{if(s.getBoundingClientRect().top<140)cur=s.id});
+  $$('#topnav a,#toc a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+cur));
+}
+addEventListener('scroll',onScroll,{passive:true});onScroll();
+$$('.copy').forEach(b=>b.addEventListener('click',()=>{
+  const t=b.closest('.codewrap').querySelector('pre').innerText;
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied'},()=>{b.textContent='Select & copy'});
+  setTimeout(()=>b.textContent='Copy',1600);
+}));
+function group(sel,fn){const bs=$$(sel);bs.forEach(b=>b.addEventListener('click',()=>{bs.forEach(x=>x.setAttribute('aria-pressed',x===b));fn(b)}))}
+function row(ok,t){return `<div class="${ok?'pass':'fail'}"><b class="${ok?'ok':'bad'}">${ok?'✓':'✗'}</b><span>${t}</span></div>`}
+
+/* checklists */
+const CK={
+ cp:['Start n8n as the video showed, and open it in your browser. It serves on <code>http://localhost:5678</code> by default.','You should see the workflow list. Create a new workflow so you have an empty canvas.'],
+ tg:['In Telegram, message <code>@BotFather</code> and send <code>/newbot</code>. Give it a name and a username.','BotFather replies with a token. That token is the credential.','Message your new bot once, so it is allowed to message you back. Then get your chat ID, which BotFather\'s helper bots or the Telegram API will give you.'],
+ exs:['Open the workflow menu, the three dots at the top right of the canvas.','Choose <b>Download</b>. You get a <code>.json</code> file containing every node, its settings, and how they are connected.','Open that file in a text editor and look at it. You will recognise your own node names and your prompt text sitting in it.']
+};
+Object.keys(CK).forEach(id=>{const ul=$('#'+id);
+  ul.innerHTML=CK[id].map((t,i)=>`<li><input type="checkbox" id="${id}${i}"><label for="${id}${i}"><b>Step ${i+1}.</b> ${t}</label></li>`).join('');
+  ul.addEventListener('change',e=>e.target.closest('li').classList.toggle('done',e.target.checked))});
+
+/* workflow renderer */
+const K={t:'Trigger',a:'AI',x:'Action',l:'Logic',h:'HTTP'};
+function WF(el,cols){
+  el.innerHTML=cols.map((col,ci)=>{
+    const body=col.map(n=>n.label?`<div class="brl">${n.label}</div>`:`<div class="nd k-${n.k==='t'?'t':n.k==='l'?'l':'o'} ${n.s||''}" data-name="${esc(n.n)}"><small>${K[n.k]}</small>${esc(n.n)}${n.note?`<span class="st">${n.note}</span>`:''}</div>`).join('');
+    return (ci?'<span class="ar" aria-hidden="true">→</span>':'')+`<div class="wcol">${body}</div>`}).join('');
+}
+
+/* quizzes */
+const Q={
+ q1:{q:'A workflow has a trigger that receives three support tickets at once, connected to an AI node. How many times does the AI node run?',
+  o:['Once, with all three tickets combined into a single input','Three times, once per item','Once, and the other two tickets are discarded','It depends on whether the AI node has been configured to loop over its input'],a:1,
+  e:'Nodes run once per item in their input by default, which is why a workflow that works on one record usually works on a hundred with no changes. A is the behaviour you would have to deliberately build with an aggregate step. D sounds plausible and describes a setting that is not how the default works.'},
+ q2:{q:'A learner wants to connect n8n to a niche internal tool their company built. It has a documented REST API but no n8n node exists for it. What is the right answer?',
+  o:['They cannot use it with n8n until somebody builds a node for that service','They need to write a custom node in TypeScript before they can call it','They should export the data from the internal tool to Google Sheets on a schedule, then have n8n read the sheet','Use the HTTP Request node to call the API directly'],a:3,
+  e:'HTTP Request is the general-purpose node for exactly this: any service with an API is reachable whether or not somebody wrote a dedicated node for it. B is a real thing you can do and is enormous overkill for calling one endpoint. C is a workaround for a problem that does not exist, and it adds a manual step to an automation.'},
+ q3:{q:'In the third node of a workflow, you need a value that the Form Trigger produced, but the node immediately before has replaced the data with the model\'s output. What do you use?',
+  o:['<code>{{ $json.subject }}</code>, since every node can see all the data from the whole workflow run','Nothing works. You have to redesign the workflow so the trigger connects to this node directly','<code>{{ $(\'Form Trigger\').item.json.subject }}</code>, which names the node you want the value from','Add an Edit Fields node before the model so the original data is carried forward manually'],a:2,
+  e:'<code>$json</code> is only the current input, which is why A fails here. Naming the node lets you reach any earlier node\'s output. D does work, and people do it, but it is extra plumbing for something the expression syntax already handles. B is wrong and would make most real workflows impossible.'},
+ q4:{q:'A workflow runs with no errors, but the Telegram message that arrives is blank. What does the input panel of the Telegram node most likely show?',
+  o:['Data that is missing the field the message text refers to','The expected data, which means Telegram itself is misconfigured','An error message explaining what failed','Nothing at all, because nodes only store their input when a run fails, and this run did not fail'],a:0,
+  e:'A blank message with no error is the signature of an expression pointing at a field that is not there: it resolves to empty, the node sends successfully, and nothing complains. C describes an error that did not happen. D is the opposite of how n8n works, and that record of input and output is the entire reason the debugging loop works.'},
+ q5:{q:'A learner posts their workflow JSON in the batch group so a classmate can try it. What does the classmate need to know before running it?',
+  o:['The file contains the author\'s Groq key in plain text, so it must be edited before anyone else runs it','Nothing. Once imported, it runs immediately exactly as it did for the author','The workflow will run on the classmate\'s machine but using the original author\'s connected accounts','It names the credentials it needs without containing them, so the classmate connects their own'],a:3,
+  e:'An export stores a reference to each credential, not the secret itself. That is what makes it safe to share a workflow in a group chat, and it is also why an imported workflow does not run until you reconnect the accounts it names. A is the fear people have, and checking the exported file once is the fastest way to settle it. C would be alarming if it were true.'}
+};
+$$('.quiz').forEach(box=>{
+  const id=box.dataset.quiz,d=Q[id];
+  box.innerHTML=`<div class="qh">Knowledge check</div><p class="q" id="${id}q">${d.q}</p><div class="opts" role="group" aria-labelledby="${id}q">${d.o.map((t,i)=>`<button class="opt" data-i="${i}">${t}</button>`).join('')}</div><div aria-live="polite" class="exwrap"></div>`;
+  box.querySelector('.opts').addEventListener('click',e=>{
+    const b=e.target.closest('.opt');if(!b)return;const i=+b.dataset.i;
+    box.querySelectorAll('.opt').forEach(x=>{x.disabled=true;const j=+x.dataset.i;
+      if(j===d.a){x.classList.add('right');x.insertAdjacentHTML('afterbegin','✓ ')}
+      else if(j===i){x.classList.add('wrong');x.insertAdjacentHTML('afterbegin','✗ ')}});
+    box.querySelector('.exwrap').innerHTML=`<div class="ex"><b>${i===d.a?'That\'s right.':'Not quite.'}</b> ${d.e}</div>`;
+  });
+});
+
+/* S1 pairs */
+const PRS=[['Input arrives','Form Trigger node','Something comes in. In n8n a trigger also lets it start on its own: a form, a schedule, an incoming message.'],['client.chat.completions.create(…)','AI node (chat model)','The same API call from Class 1, with the same three roles and the same key.'],['if urgency == "high":','IF node','The branch you used to write as code is now a node on the canvas.'],['print / send the result','Action node (Telegram, Gmail…)','Something goes out. Here it can go to another service instead of your terminal.']];
+$('#pairs').innerHTML=PRS.map((p,i)=>`<button data-i="${i}" aria-pressed="${i===1}"><code>${esc(p[0])}</code><span aria-hidden="true">→</span><span><b>${p[1]}</b></span></button>`).join('');
+function showPair(i){$$('#pairs button').forEach((b,j)=>b.setAttribute('aria-pressed',i===j));$('#pairinfo').innerHTML=`<b>${PRS[i][1]}</b><p style="margin:6px 0 0">${PRS[i][2]}</p>`}
+$('#pairs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)showPair(+b.dataset.i)});showPair(1);
+
+/* S2 items */
+const TKT=[['asha@example.com','Order not arrived'],['ravi@example.com','Wrong size'],['meera@example.com','Charged twice'],['dev@example.com','Cannot log in'],['nina@example.com','Delivery date?']];
+function runItems(){
+  const n=+$('#nit').value;$('#nito').textContent=n;
+  WF($('#wf1'),[[{n:'Form Trigger',k:'t',s:'hot',note:n+(n>1?' items out':' item out')}],[{n:'AI node',k:'a',s:'hot',note:'runs '+n+(n>1?' times':' time')}],[{n:'Action',k:'x',s:'hot',note:'runs '+n+(n>1?' times':' time')}]]);
+  $('#itms').innerHTML=TKT.slice(0,n).map(t=>`<div class="itm">{ "customer_email": "${t[0]}",<br>&nbsp;&nbsp;"subject": "${t[1]}" }</div>`).join('');
+}
+$('#nit').addEventListener('input',runItems);runItems();
+
+/* S4 game */
+const NODES=[['Form Trigger','t'],['Schedule','t'],['Webhook','t'],['Manual','t'],['OpenAI Chat Model','a'],['Gmail','x'],['Google Sheets','x'],['Telegram','x'],['IF','l'],['Switch','l'],['Edit Fields','l'],['HTTP Request','h'],['A niche internal tool with a REST API and no n8n node','h']];
+const KN=[['t','Trigger'],['a','AI'],['x','Action'],['l','Logic'],['h','HTTP Request']];
+let gi=0,gs=0,gt=0,gdone=false;
+$('#gk').innerHTML=KN.map(k=>`<button data-k="${k[0]}">${k[1]}</button>`).join('');
+function gShow(){gdone=false;$('#gname').textContent=NODES[gi][0];$('#gres').innerHTML='Pick a kind.';$$('#gk button').forEach(b=>b.disabled=false);$('#gscore').textContent=`Score: ${gs} of ${gt}`}
+$('#gk').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||gdone)return;gdone=true;gt++;const ok=b.dataset.k===NODES[gi][1];if(ok)gs++;
+  $$('#gk button').forEach(x=>x.disabled=true);
+  $('#gres').innerHTML=ok?`<b class="ok">✓ Correct.</b>`:`<b class="bad">✗ It is a ${KN.find(k=>k[0]===NODES[gi][1])[1]} node.</b>`;$('#gscore').textContent=`Score: ${gs} of ${gt}`});
+$('#gnext').addEventListener('click',()=>{gi=(gi+1)%NODES.length;gShow()});gShow();
+
+/* credentials */
+const CR={
+ key:{s:['Get the key or token from the service','Paste it into the credential in n8n'],t:'Under a minute.'},
+ oc:{s:['Click to sign in to the service','Approve access'],t:'A few minutes. Registering the application is handled for you.'},
+ ol:{s:['Register your own application with Google','Get a client ID and secret','Paste them into the credential in n8n','Sign in to the service','Approve access'],t:'A few minutes, more on a local install. Not hard, just a detour: do it before class.'}
+};
+function showCred(k){$('#credsteps').innerHTML=CR[k].s.map(s=>`<li>${s}</li>`).join('');$('#credt').innerHTML=`<b>Time:</b> ${CR[k].t}`}
+group('#credb button',b=>showCred(b.dataset.c));showCred('key');
+
+/* S5 builder */
+const BS=[
+ ['Add a Form Trigger','Give it three fields: customer email, subject, and the message body.',[[{n:'Form Trigger',k:'t'}]]],
+ ['Submit one realistic ticket','Open the form URL n8n gives you and submit a messy, realistic ticket, for example: "Ordered 3 weeks ago, nothing arrived, nobody is answering my emails and I need this before Friday or I want my money back."',[[{n:'Form Trigger',k:'t',s:'hot',note:'1 item'}]]],
+ ['Look at what the trigger produced','It is JSON, with your three fields in it. That JSON is what the next node receives.',[[{n:'Form Trigger',k:'t',s:'hot',note:'JSON out'}]]],
+ ['Add the chat model node','Set up the Groq credential from Section 4: key, base URL and model.',[[{n:'Form Trigger',k:'t'}],[{n:'AI node',k:'a',s:'hot'}]]],
+ ['Give it the system prompt','Paste the triage prompt below. It is Class 2\'s structured output lesson, ending with "Return only the JSON object."',[[{n:'Form Trigger',k:'t'}],[{n:'AI node',k:'a',s:'hot',note:'JSON out'}]]],
+ ['Add an IF node','Condition: the urgency field equals <code>high</code>. Section 6 covers how to reference that field.',[[{n:'Form Trigger',k:'t'}],[{n:'AI node',k:'a'}],[{n:'IF urgent?',k:'l',s:'hot'}]]],
+ ['True branch: Telegram','Use the bot credential from Section 4. Send the summary and the customer\'s email.',[[{n:'Form Trigger',k:'t'}],[{n:'AI node',k:'a'}],[{n:'IF urgent?',k:'l'}],[{label:'yes'},{n:'Telegram alert',k:'x',s:'hot'}]]],
+ ['False branch: Gmail','Create a draft reply using the <code>suggested_reply</code> field. If Gmail OAuth is not working, put a second Telegram node here instead.',[[{n:'Form Trigger',k:'t'}],[{n:'AI node',k:'a'}],[{n:'IF urgent?',k:'l'}],[{label:'yes'},{n:'Telegram alert',k:'x'},{label:'no'},{n:'Gmail draft reply',k:'x',s:'hot'}]]]
+];
+let bsx=0;
+function showB(){const s=BS[bsx];WF($('#wf2'),s[2]);$('#binfo').innerHTML=`<b>Step ${bsx+1}: ${s[0]}</b><p style="margin:6px 0 0">${s[1]}</p>`;$('#bstep').textContent=`Step ${bsx+1} of ${BS.length}`;$('#bprev').disabled=bsx===0;$('#bnext').disabled=bsx===BS.length-1}
+$('#bprev').addEventListener('click',()=>{if(bsx>0){bsx--;showB()}});$('#bnext').addEventListener('click',()=>{if(bsx<BS.length-1){bsx++;showB()}});showB();
+
+/* triage sim */
+const TM={a:'Ordered 3 weeks ago, nothing arrived, nobody is answering my emails and I need this before Friday or I want my money back.',b:'Hi, could you tell me when my order is likely to arrive? Thanks!',c:''};
+function classify(t){
+  const s=t.trim();if(!s)return{category:'other',urgency:'normal',sentiment:'neutral',summary:'',suggested_reply:''};
+  const high=/(before|by)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)|deadline|lawyer|legal|sue\b|solicitor|nobody\s+(is\s+)?(answer|reply|respond)|no\s+one\s+(has\s+)?(answer|repl|respond)|ignored|not\s+replied/i.test(s);
+  const cat=/arriv|deliver|order|shipp|parcel/i.test(s)?'delivery':/charge|bill|invoice|refund|payment/i.test(s)?'billing':/broke|broken|fault|stopped working|defect|not working/i.test(s)?'product_fault':'other';
+  const ang=/nobody|ignored|angry|furious|unacceptable|money back|still waiting|!!/i.test(s);const happy=/thank|great|love|happy/i.test(s)&&!ang;
+  const w=s.split(/\s+/).slice(0,14).join(' ');
+  return{category:cat,urgency:high?'high':'normal',sentiment:ang?'angry':happy?'happy':'neutral',summary:w+(s.split(/\s+/).length>14?'…':''),suggested_reply:'Thank you for getting in touch. We are looking into this and will update you shortly.'};
+}
+function runTk(){
+  const t=$('#tmsg').value,o=classify(t),hi=o.urgency==='high';
+  WF($('#wf3'),[[{n:'Form Trigger',k:'t',note:'ticket in'}],[{n:'AI node',k:'a',s:'hot',note:'classified'}],[{n:'IF urgent?',k:'l',s:'hot',note:hi?'true':'false'}],[{label:'yes'},{n:'Telegram alert',k:'x',s:hi?'hot':'skip',note:hi?'sent':'skipped'},{label:'no'},{n:'Gmail draft reply',k:'x',s:hi?'skip':'hot',note:hi?'skipped':'drafted'}]]);
+  $('#tjson').textContent=JSON.stringify(o,null,2);
+  $('#tact').textContent=hi?`Telegram alert:\n"${o.summary}"\nFrom: asha@example.com`:`Gmail draft reply:\n"${o.suggested_reply}"`;
+}
+$('#tmsg').value=TM.a;runTk();$('#tmsg').addEventListener('input',runTk);
+group('#tk button',b=>{$('#tmsg').value=TM[b.dataset.t];runTk()});
+
+/* expressions */
+const NDAT={'Form Trigger':{customer_name:'Asha Rao',customer_email:'asha@example.com',subject:'Order not arrived',message:'Ordered 3 weeks ago, nothing arrived.',order_id:'A-1042'},'AI node':{category:'delivery',urgency:'high',sentiment:'angry',summary:'Order missing after three weeks; customer wants it before Friday.'}};
+const TPL={a:'A customer wrote in about an order. Write a reply.\n\nTheir name: {{ $json.customer_name }}\nTheir order number: {{ $json.order_id }}\nWhat they said: {{ $json.message }}\nHow urgent we judged it: {{ $json.urgency }}\n\nMatch the tone to the urgency. Do not promise a refund.',b:'A customer wrote in about an order. Write a reply.\n\nTheir name: {{ $(\'Form Trigger\').item.json.customer_name }}\nTheir order number: {{ $(\'Form Trigger\').item.json.order_id }}\nWhat they said: {{ $(\'Form Trigger\').item.json.message }}\nHow urgent we judged it: {{ $json.urgency }}\n\nMatch the tone to the urgency. Do not promise a refund.'};
+let prevN='Form Trigger';
+function getPath(o,p){return p.split('.').reduce((a,k)=>a==null?undefined:a[k],o)}
+function evalExpr(x){
+  x=x.trim();const m=x.match(/^(.*?)(?:\.(toUpperCase|toLowerCase)\(\))?$/);const base=m[1],fn=m[2];let v,mm;
+  if((mm=base.match(/^\$json\.([\w.]+)$/)))v=getPath(NDAT[prevN],mm[1]);
+  else if((mm=base.match(/^\$\('([^']+)'\)\.item\.json\.([\w.]+)$/)))v=NDAT[mm[1]]?getPath(NDAT[mm[1]],mm[2]):undefined;
+  else return {err:true};
+  if(v!==undefined&&fn)v=String(v)[fn]();
+  return {v};
+}
+function runExpr(){
+  $('#jdata').textContent=JSON.stringify(NDAT[prevN],null,1);
+  $('#ndata').innerHTML=Object.keys(NDAT).map(k=>`<b>$('${k}')</b>${k===prevN?' (also the current input)':''}`).join('<br>');
+  const t=$('#tin').value;
+  $('#tout').innerHTML=esc(t).replace(/\{\{([\s\S]*?)\}\}/g,(all,ex)=>{
+    const r=evalExpr(ex.replace(/&amp;/g,'&').replace(/&lt;/g,'<'));
+    if(r.err)return `<span class="em">⟨cannot evaluate⟩</span>`;
+    return (r.v===undefined||r.v==='')?`<span class="em">⟨empty: field not found⟩</span>`:`<mark>${esc(r.v)}</mark>`});
+}
+group('#prev button',b=>{prevN=b.dataset.p==='form'?'Form Trigger':'AI node';runExpr()});
+$$('[data-tpl]').forEach(b=>b.addEventListener('click',()=>{$$('[data-tpl]').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#tin').value=TPL[b.dataset.tpl];runExpr()}));
+$('#tin').value=TPL.a;$('#tin').addEventListener('input',runExpr);runExpr();
+
+/* debug question */
+function showD(y){$('#dy').setAttribute('aria-pressed',y);$('#dn').setAttribute('aria-pressed',!y);
+  $('#dres').innerHTML=y?'<b>The node\'s own settings are wrong.</b><p style="margin:6px 0 0">The input was right, so look at the node\'s parameters and expressions.</p>':'<b>The problem is upstream.</b><p style="margin:6px 0 0">Move one node to the left, read <i>its</i> input and output, and ask the same question again.</p>'}
+$('#dy').addEventListener('click',()=>showD(true));$('#dn').addEventListener('click',()=>showD(false));
+
+/* break it */
+const BR={
+ 1:{wf:[[{n:'Form Trigger',k:'t',s:'',note:'✓ ran'}],[{n:'AI node',k:'a',note:'✓ ran'}],[{n:'Telegram',k:'x',s:'silent',note:'ran: sent nothing'}]],
+  inn:'{ "category": "delivery",\n  "urgency": "high",\n  "summary": "Order missing…" }\n\nMessage field expression:\n{{ $json.sumary }}',
+  out:'Message sent.\ntext: ""',
+  note:'<b>No error, and that is the problem.</b> The expression points at a field that does not exist, so it resolves to empty, the node sends successfully, and nothing complains. The input panel shows the data is missing the field the message refers to.'},
+ 2:{wf:[[{n:'Form Trigger',k:'t',note:'✓ ran'}],[{n:'AI node',k:'a',s:'hot',note:'ran: not valid JSON'}],[{n:'IF urgent?',k:'l',s:'fail',note:'✗ failed'}]],
+  inn:'Sure! Here is the triage you asked for:\n{ "category": "delivery", "urgency": "high", … }',
+  out:'Error: cannot find the field "urgency"',
+  note:'<b>Class 2\'s lesson, arriving as a broken workflow.</b> Without the "Return only the JSON object" line, the model adds a friendly sentence, the output stops being valid JSON, and the IF node cannot find the urgency field. (The model\'s sentence here is illustrative.)'},
+ 3:{wf:[[{n:'Form Trigger',k:'t',note:'✓ ran'}],[{n:'AI node',k:'a',s:'silent',note:'ran on nothing'}],[{n:'IF urgent?',k:'l',note:'ran'}]],
+  inn:'{ "customer_email": "asha@example.com",\n  "subject": "Order not arrived",\n  "message": "" }',
+  out:'Whatever the model returns here is not based on anything in the ticket.',
+  note:'<b>Look at what the model does with nothing to classify.</b> The run may complete without any error, so the input panel of the AI node is where you spot that the message was empty.'}
+};
+function showBr(k){const b=BR[k];WF($('#wf4'),b.wf);$('#bin').textContent=b.inn;$('#bout').textContent=b.out;$('#bnote').innerHTML=b.note}
+group('#brk button',b=>showBr(+b.dataset.b));showBr(1);
+
+/* export */
+const WFJ={name:'Support ticket triage',nodes:[{name:'Form Trigger'},{name:'AI node',parameters:{systemPrompt:'You triage incoming customer support tickets. …'},credentials:{openAiApi:{id:'3',name:'Groq account'}}},{name:'IF urgent?'},{name:'Telegram alert',credentials:{telegramApi:{id:'7',name:'Telegram bot'}}},{name:'Gmail draft reply',credentials:{gmailOAuth2:{id:'9',name:'Gmail account'}}}],connections:{'Form Trigger':['AI node'],'AI node':['IF urgent?'],'IF urgent?':['Telegram alert','Gmail draft reply']}};
+function showEx(k){$('#ex1').setAttribute('aria-pressed',k===1);$('#ex2').setAttribute('aria-pressed',k===2);
+  const js=JSON.stringify(WFJ,null,1);$('#exj').textContent=js;
+  const creds=WFJ.nodes.filter(n=>n.credentials).map(n=>[n.name,Object.values(n.credentials)[0].name]);
+  $('#exc').innerHTML=k===1?row(!js.includes('gsk_'),'Contains a Groq key (<code>gsk_…</code>)? '+(js.includes('gsk_')?'yes':'No. Only a reference to the credential.'))+row(true,'Contains your node names and prompt text, so you recognise your own work.')+row(true,'Safe to share in a group chat.')
+   :creds.map(c=>row(false,`<b>${c[0]}</b> needs a credential: "${c[1]}" is the author's. Connect your own account.`)).join('')+row(true,'The nodes and connections drew themselves from the JSON.');
+}
+$('#ex1').addEventListener('click',()=>showEx(1));$('#ex2').addEventListener('click',()=>showEx(2));showEx(1);
+
+/* challenges */
+const CH={
+ a:[[{n:'Schedule',k:'t'}],[{n:'HTTP Request',k:'h',note:'news feed'}],[{n:'AI node',k:'a',note:'pick 3, 2 lines each'}],[{n:'Telegram',k:'x',note:'to yourself'}]],
+ b:[[{n:'Schedule',k:'t'}],[{n:'Google Sheets',k:'x',note:'read rows'}],[{n:'AI node',k:'a',note:'categorise each row'}],[{n:'Google Sheets',k:'x',note:'write category back'}]],
+ c:[[{n:'Trigger',k:'t',note:'for your own task'}],[{n:'First action',k:'x',note:'a real start'}],[{n:'…',k:'l',s:'off'}]]
+};
+const CHN={a:'<b>Challenge A, the morning briefing.</b> On a schedule, fetch a news feed with HTTP Request, have the model pick the three items most relevant to a software engineer and summarise each in two lines, and send it to yourself on Telegram.',b:'<b>Challenge B, the spreadsheet sorter.</b> On a schedule, read rows from a Google Sheet, have the model categorise each one, and write the category back to the sheet.',c:'<b>Challenge C, your own.</b> Take the thing you named in Section 1 and build the first two nodes of it. Two nodes is a real start.'};
+function showCh(k){WF($('#wf5'),CH[k]);$('#chaln').innerHTML=CHN[k]}
+group('#chal button',b=>showCh(b.dataset.c));showCh('a');
+
+/* agent toggle */
+function showAg(k){$('#ag1').setAttribute('aria-pressed',k===1);$('#ag2').setAttribute('aria-pressed',k===2);
+  $('#agn').innerHTML=k===1?'<b>You decided the path.</b><p style="margin:6px 0 0">You wrote the IF node and chose what happens when urgency is high. The branch was written in advance.</p>':'<b>The model chooses.</b><p style="margin:6px 0 0">It picks its own tools and its own sequence. The question becomes what happens when nobody wrote the branch in advance.</p>'}
+$('#ag1').addEventListener('click',()=>showAg(1));$('#ag2').addEventListener('click',()=>showAg(2));showAg(1);
+})();
+</script>
+</body>
+</html>
